@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+    <head>
+        <meta charset="utf-8">
+        <title>PeerJS</title>
+        <script src="https://cdn.jsdelivr.net/npm/peerjs@0.3.20/dist/peer.min.js"></script>
+    </head>
+    <body>
+
+        <input type="text" id="peerIdText">
+        <button type="button" onclick="join()"> Join </button>
+        <hr>
+
+        <h3> Message </h3>
+        <input type="text" id="msgText">
+        <button type="button" onclick="sendMsg()"> Send </button>
+
+        <h3>Call </h3>
+        <button type="button" onclick="callFriend()"> Call </button>
+        <button type="button" onclick="answerCall()"> Answer </button>
+
+        <video id="myVideo" width="240" height="160" controls>
+            <source id="vid_test" src="">
+        </video>
+
+        <script>
+            let peer = new Peer('', {
+                host: "localhost",
+                port: 9000,
+                path: "/api"
+            });
+
+            let peerId
+            let connMain
+
+            // on open will be launch when you successfully connect to PeerServer
+            peer.on('open', function(id){
+              peerId = id
+              console.log("connetion is open id@ " + peerId);
+            });
+
+            peer.on('connection', function(conn) {
+                connMain = conn
+                console.log('-- someone is just connect --')
+                startReceiving()
+            });
+
+            function join() {
+                peerIdText = document.getElementById('peerIdText').value
+                conn = peer.connect(peerIdText, {
+                    reliable : true
+                })
+                connMain = conn
+                startReceiving()
+            }
+
+            function sendMsg() {
+                msgText = document.getElementById('msgText').value
+                connMain.send(msgText)
+            }
+
+            function startReceiving() {
+                console.log(' -- in start receiving --')
+                connMain.on('data', function(data) {
+                    console.log('-- msg received ', data)
+                })
+            }
+
+            //get media stream
+            navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+            navigator.getUserMedia({audio: true, video: true}, function(stream){
+                                        window.localStream = stream
+                                    }, function(err) {
+                                     console.log("The following error occurred: " + err.name);
+                                  })
+
+            function callFriend() {
+                peerIdText = document.getElementById('peerIdText').value
+                var call = peer.call(peerIdText, window.localStream);
+                console.log('call a friend ...', peerIdText)
+            }
+
+            peer.on('call', function(call) {
+                console.log('receive a call from friend ...')
+              // Answer the call, providing our mediaStream
+              call.answer(window.localStream);
+              call.on('stream', function(stream) {
+                  var video = document.getElementById('myVideo');
+                  video.srcObject = stream
+              })
+            });
+
+        </script>
+    </body>
+</html>
